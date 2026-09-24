@@ -1,0 +1,5 @@
+# Wrapper server dependencies. Install them inside the project .venv.
+fastapi>=0.115,<1.0
+uvicorn>=0.30,<1.0
+pyyaml>=6.0,<7.0
+python-multipart>=0.0.9

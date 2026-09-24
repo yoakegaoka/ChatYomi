@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ChatYomi 設定</title>
+<style>
+  :root { color-scheme: light dark; --bg:#f5f6f8; --card:#fff; --fg:#20242b; --muted:#596270; --line:#d7dce2; --accent:#225ec5; --danger:#b4232e; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#17191d; --card:#24272d; --fg:#f1f2f4; --muted:#bdc3cc; --line:#515761; --accent:#8db8ff; --danger:#ff999f; } }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:20px; background:var(--bg); color:var(--fg); font:16px/1.55 system-ui,sans-serif; }
+  main { max-width:820px; margin:auto; }
+  h1 { font-size:1.65rem; margin:0; }
+  h2 { font-size:1.22rem; margin:0 0 12px; }
+  h3 { font-size:1rem; margin:0 0 8px; }
+  p { margin:8px 0; }
+  .lead, .hint { color:var(--muted); }
+  .lead { margin:2px 0 22px; }
+  .hint { font-size:.9rem; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; margin:16px 0; }
+  .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .spread { justify-content:space-between; }
+  .grow { flex:1; min-width:0; }
+  .voice { padding:12px 0; border-top:1px solid var(--line); }
+  .voice:first-child { border-top:0; }
+  button, select, input, textarea, .action { font:inherit; }
+  button, .action { display:inline-block; border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:7px; padding:7px 12px; cursor:pointer; text-decoration:none; }
+  button:hover, .action:hover { border-color:var(--accent); }
+  button:disabled { opacity:.55; cursor:wait; }
+  .primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  @media (prefers-color-scheme: dark) { .primary { color:#10151b; } }
+  .danger { color:var(--danger); }
+  input, select, textarea { background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:7px; padding:8px; max-width:100%; }
+  input[type="number"] { width:7em; }
+  input[type="file"] { width:100%; }
+  textarea { width:100%; resize:vertical; }
+  label { display:block; font-weight:600; margin:12px 0 5px; }
+  label.inline { display:inline-flex; align-items:center; gap:7px; margin:0; }
+  .fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 16px; }
+  .fields > div > input, .fields > div > select { width:100%; }
+  .notice { min-height:1.5em; margin:8px 0 0; }
+  .notice.error { color:var(--danger); }
+  .notice.success { color:#17744d; }
+  @media (prefers-color-scheme: dark) { .notice.success { color:#7dd6a8; } }
+  details { margin:12px 0; }
+  summary { cursor:pointer; font-weight:600; }
+  audio { max-width:100%; }
+  .candidate { display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+  .site { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--line); }
+  .site:first-child { border-top:0; }
+  .site select { min-width:210px; }
+  :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  @media (max-width:560px) {
+    body { padding:12px; }
+    .card { padding:14px; }
+    .fields { grid-template-columns:1fr; }
+    .site { align-items:stretch; flex-direction:column; }
+    .site select { width:100%; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header><h1>ChatYomi 設定</h1><p class="lead">AIの回答を読み上げる声を設定します。</p></header>
+
+  <section class="card" aria-labelledby="statusHeading">
+    <div class="row spread"><h2 id="statusHeading">音声サーバーの接続状態</h2><button id="refreshStatus" type="button">状態を更新</button></div>
+    <p id="status" role="status">確認中...</p>
+    <p id="serverStatus"></p>
+    <p id="statusDetail" class="hint"></p>
+  </section>
+
+  <details class="card">
+    <summary>はじめて使う方へ</summary>
+    <ol>
+      <li>下の「声を試す」で読み上げを確認します。声を登録しなくても試せます。</li>
+      <li>ブラウザに読み上げ機能を追加します。</li>
+      <li>Claude、Copilot、Gemini、ChatGPTで丸いボタンを押し、読み上げを有効にします。</li>
+    </ol>
+    <p class="hint">初回の音声生成には、モデルの準備で時間がかかることがあります。</p>
+  </details>
+
+  <section class="card" aria-labelledby="voicesHeading">
+    <h2 id="voicesHeading">読み上げる声</h2>
+    <p class="hint">「基本の声」は、サイトごとに声を指定していない場合に使います。</p>
+    <div id="voices" aria-live="polite">読み込み中...</div>
+    <p id="voiceMessage" class="notice" role="status"></p>
+    <details id="addVoice">
+      <summary>声を追加する</summary>
+      <form id="voiceForm">
+        <div class="fields">
+          <div><label for="newName">声の名前</label><input id="newName" required autocomplete="off"></div>
+          <div><label for="newFile">見本にする音声ファイル（WAV）</label><input id="newFile" type="file" accept=".wav,audio/wav"></div>
+        </div>
+        <p class="hint">雑音やBGMの少ない、15～30秒の音声を選んでください。ファイルなしでも標準の声をもとに作れます。</p>
+        <button class="primary" type="submit">声を追加</button>
+        <p id="addMessage" class="notice" role="status"></p>
+      </form>
+    </details>
+  </section>
+
+  <section class="card" aria-labelledby="previewHeading">
+    <h2 id="previewHeading">声を試す・調整する</h2>
+    <div class="fields">
+      <div><label for="previewVoice">試す声</label><select id="previewVoice"></select></div>
+      <div><label for="speed">話す速さ（倍）</label><input id="speed" type="number" min="0.5" max="1.5" step="any" inputmode="decimal"><p id="speedHint" class="hint"></p></div>
+      <div><label for="steps">生成ステップ数（4～40）</label><input id="steps" type="number" min="4" max="40" step="1" inputmode="numeric"><p id="stepsHint" class="hint">空欄なら標準の値を使います。少なくすると生成が速くなりますが、音質が変わります。</p></div>
+    </div>
+    <label for="previewText">読み上げる文章</label>
+    <textarea id="previewText" rows="3">今日はいい天気ですね。散歩にでも出かけませんか。</textarea>
+    <details>
+      <summary>複数の読み方を聴き比べる</summary>
+      <label for="candidates">候補数</label><select id="candidates"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+    </details>
+    <div class="row">
+      <button id="previewButton" class="primary" type="button">生成して聴く</button>
+      <button id="saveButton" type="button">この声の設定を保存</button>
+    </div>
+    <p id="previewMessage" class="notice" role="status"></p>
+    <div id="candidatesResult"></div>
+  </section>
+
+  <section class="card" aria-labelledby="sitesHeading">
+    <h2 id="sitesHeading">サイトごとの声</h2>
+    <p class="hint">変更は次の読み上げから反映されます。</p>
+    <div id="sites">読み込み中...</div>
+    <p id="siteMessage" class="notice" role="status"></p>
+  </section>
+
+  <section class="card" aria-labelledby="installHeading">
+    <h2 id="installHeading">ブラウザで読み上げる</h2>
+    <p>ViolentmonkeyまたはTampermonkeyを入れたブラウザで、次のリンクを開いてください。</p>
+    <a class="action primary" href="/tts-readaloud.user.js">読み上げ機能を追加・更新</a>
+    <p class="hint">インストール画面が開きます。追加後、AIチャット画面の丸いボタンを押すと読み上げが有効になります。</p>
+  </section>
+
+  <details class="card">
+    <summary>詳細設定とヘルプ</summary>
+    <h3>ファイルを直接変更したとき</h3>
+    <div class="row"><button id="reloadVoices" type="button">声の一覧を更新</button><button id="reloadReadings" type="button">読み替え辞書を読み直す</button></div>
+    <p id="detailMessage" class="notice" role="status"></p>
+    <h3>接続情報</h3>
+    <p id="technicalStatus" class="hint">確認中...</p>
+    <p class="hint">通常の終了は <code>stop.cmd</code> を使います。ChatYomiだけを停止する場合は次のボタンを使います。</p>
+    <button id="shutdownButton" class="danger" type="button">ChatYomiだけを停止</button>
+  </details>
+</main>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const labels = { claude:'Claude', copilot:'Microsoft Copilot', gemini:'Gemini', chatgpt:'ChatGPT' };
+const siteOrder = ['chatgpt', 'gemini', 'claude', 'copilot'];
+const minSpeed = 0.5, maxSpeed = 1.5, minSteps = 4, maxSteps = 40;
+let voices = [], current = 'default', selected = '';
+
+function message(id, value, kind = '') {
+  const node = $(id);
+  node.textContent = value;
+  node.className = 'notice ' + kind;
+}
+function button(label, action, className = '') {
+  const node = document.createElement('button');
+  node.type = 'button'; node.textContent = label; node.className = className;
+  node.addEventListener('click', action);
+  return node;
+}
+async function api(path, options) {
+  const response = await fetch(path, options);
+  const type = response.headers.get('content-type') || '';
+  const data = type.includes('json') ? await response.json() : await response.text();
+  if (!response.ok) throw new Error(data.detail || data || 'HTTP ' + response.status);
+  return data;
+}
+async function busy(node, action) {
+  node.disabled = true;
+  try { return await action(); } finally { node.disabled = false; }
+}
+function voiceLabel(v) {
+  return v.name === 'default' ? '標準の声' : v.display_name || v.name;
+}
+function savedSpeed(params) {
+  const scale = Number(params?.duration_scale);
+  return Number.isFinite(scale) && scale > 0 ? 1 / scale : null;
+}
+function formatSpeed(value) {
+  return Number(value.toFixed(3)).toString();
+}
+function isSavedSpeedInput(input, params) {
+  const saved = savedSpeed(params);
+  return saved !== null && input !== '' && +input === +formatSpeed(saved);
+}
+function settingsError(speed, steps) {
+  if (speed !== '' && (!Number.isFinite(+speed) || +speed < minSpeed || +speed > maxSpeed))
+    return '話す速さは0.5～1.5倍で入力してください。';
+  if (steps !== '' && (!Number.isInteger(+steps) || +steps < minSteps || +steps > maxSteps))
+    return '生成ステップ数は4～40で入力してください。';
+  return '';
+}
+function showSettings() {
+  const voice = voices.find(v => v.name === selected);
+  const params = voice?.params || {};
+  const speed = savedSpeed(params);
+  $('speed').value = speed === null ? '' : formatSpeed(speed);
+  $('steps').value = params.num_steps ?? '';
+  $('speedHint').textContent = speed === null
+    ? '設定値なし。標準の速さを使います（入力範囲: 0.5～1.5倍）。'
+    : '保存済みの値です（入力範囲: 0.5～1.5倍）。';
+  $('stepsHint').textContent = params.num_steps == null
+    ? '設定値なし。標準の値を使います。少なくすると速くなりますが、音質が変わります。'
+    : '保存済みの値です。少なくすると速くなりますが、音質が変わります。';
+  $('saveButton').disabled = selected === 'default';
+  message('previewMessage', selected === 'default' ? '標準の声の調整値は保存できません。' : '');
+  $('candidatesResult').replaceChildren();
+}
+function selectVoice(name) {
+  selected = name;
+  $('previewVoice').value = name;
+  showSettings();
+  $('previewHeading').scrollIntoView({ block:'start', behavior:'smooth' });
+}
+function renderVoices() {
+  const target = $('voices'); target.replaceChildren();
+  const picker = $('previewVoice'); picker.replaceChildren();
+  for (const voice of voices) {
+    const option = new Option(voiceLabel(voice), voice.name);
+    picker.add(option);
+    const item = document.createElement('div'); item.className = 'voice row';
+    const title = document.createElement('div'); title.className = 'grow';
+    const strong = document.createElement('strong'); strong.textContent = voiceLabel(voice);
+    title.append(strong);
+    if (voice.name === current) {
+      const marker = document.createElement('span'); marker.className = 'hint'; marker.textContent = '　基本の声';
+      title.append(marker);
+    }
+    const params = voice.params || {};
+    const speed = savedSpeed(params);
+    const summary = document.createElement('div'); summary.className = 'hint';
+    summary.textContent = '話す速さ: ' + (speed === null ? '標準' : formatSpeed(speed) + '倍') +
+      ' ／ 生成ステップ数: ' + (params.num_steps ?? '標準');
+    title.append(summary);
+    item.append(title, button('試聴・調整', () => selectVoice(voice.name)));
+    if (voice.name !== current) item.append(button('基本の声にする', async function() {
+      await busy(this, async () => {
+        try {
+          await api('/voices/current', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:voice.name}) });
+          current = voice.name; renderVoices(); await renderSites();
+          message('voiceMessage', voiceLabel(voice) + 'を基本の声にしました。', 'success');
+        } catch (error) { message('voiceMessage', '変更できませんでした: ' + error.message, 'error'); }
+      });
+    }));
+    if (voice.name !== 'default') item.append(button('削除', async function() {
+      if (!confirm('「' + voiceLabel(voice) + '」を削除します。登録した音声ファイルと設定も消えます。よろしいですか？')) return;
+      await busy(this, async () => {
+        try {
+          await api('/voices/' + encodeURIComponent(voice.name), {method:'DELETE'});
+          await loadVoices();
+          message('voiceMessage', '「' + voiceLabel(voice) + '」を削除しました。', 'success');
+        } catch (error) { message('voiceMessage', '削除できませんでした: ' + error.message, 'error'); }
+      });
+    }, 'danger'));
+    target.append(item);
+  }
+  picker.value = selected;
+}
+async function renderSites() {
+  const data = await api('/sites');
+  const target = $('sites'); target.replaceChildren();
+  const orderedSites = [...data.sites].sort((a, b) => {
+    const ai = siteOrder.indexOf(a.id), bi = siteOrder.indexOf(b.id);
+    return (ai < 0 ? siteOrder.length : ai) - (bi < 0 ? siteOrder.length : bi);
+  });
+  for (const site of orderedSites) {
+    const row = document.createElement('div'); row.className = 'site';
+    const name = document.createElement('strong'); name.textContent = labels[site.id] || site.id;
+    const select = document.createElement('select');
+    select.setAttribute('aria-label', name.textContent + 'で使う声');
+    select.add(new Option('基本の声を使う（' + voiceLabel(voices.find(v => v.name === current) || {name:current}) + '）', ''));
+    for (const voice of voices) select.add(new Option(voiceLabel(voice), voice.name));
+    select.value = site.voice;
+    select.addEventListener('change', async () => {
+      const next = select.value; select.disabled = true;
+      try {
+        await api('/sites/' + encodeURIComponent(site.id) + '/voice', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:next}) });
+        site.voice = next;
+        message('siteMessage', name.textContent + 'の声を変更しました。', 'success');
+      } catch (error) {
+        select.value = site.voice;
+        message('siteMessage', '変更できませんでした: ' + error.message, 'error');
+      } finally { select.disabled = false; }
+    });
+    row.append(name, select); target.append(row);
+  }
+}
+async function loadVoices(preserveEdits = true) {
+  const previous = selected, speed = $('speed').value, steps = $('steps').value;
+  const data = await api('/voices');
+  voices = data.voices; current = data.current;
+  if (!voices.some(v => v.name === selected)) selected = current;
+  renderVoices(); showSettings(); await renderSites();
+  if (preserveEdits && selected === previous) {
+    $('speed').value = speed; $('steps').value = steps;
+  }
+}
+async function refreshStatus() {
+  try {
+    const health = await api('/health');
+    const ready = !!health.model_loaded;
+    $('status').textContent = ready ? '読み上げを利用できます' : '読み上げサーバーに接続できません';
+    const detail = health.backend_details || {};
+    const serverBackend = health.backend === 'irodori_server';
+    $('serverStatus').textContent = serverBackend
+      ? 'このPCのChatYomi → Irodori-TTS-Server: ' + (ready ? '接続済み' : '未接続') +
+        ' ／ 音声モデル: ' + (!ready ? '状態を確認できません' : detail.runtime_loaded ? '読み込み済み' : detail.runtime_loading ? '読み込み中' : '初回の読み上げ時に読み込み')
+      : 'このPCのChatYomi: 開発用音声（Dummy）で動作中';
+    $('statusDetail').textContent = detail.error || (serverBackend && !detail.runtime_loaded
+      ? '初回の読み上げには、モデルの準備で時間がかかることがあります。' : '');
+    $('technicalStatus').textContent = '接続先: ' + health.backend +
+      ' ／ モデル: ' + (health.model || '不明') +
+      ' ／ 処理中: ' + health.queue_length +
+      (detail.error ? ' ／ エラー: ' + detail.error : '');
+  } catch (error) {
+    $('status').textContent = '状態を確認できません';
+    $('serverStatus').textContent = 'このPCのChatYomiと音声サーバーの状態を確認できません。';
+    $('statusDetail').textContent = error.message;
+    $('technicalStatus').textContent = error.message;
+  }
+}
+$('previewVoice').addEventListener('change', () => { selected = $('previewVoice').value; showSettings(); });
+$('voiceForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const submit = event.submitter;
+  const name = $('newName').value.trim();
+  if (!name) return message('addMessage', '声の名前を入力してください。', 'error');
+  await busy(submit, async () => {
+    const form = new FormData(); form.append('name', name);
+    const file = $('newFile').files[0]; if (file) form.append('file', file);
+    try {
+      const result = await api('/voices', {method:'POST', body:form});
+      $('voiceForm').reset(); selected = result.name;
+      await loadVoices();
+      message('addMessage', '声を追加しました。下で試聴できます。', 'success');
+      $('addVoice').open = false;
+      selectVoice(result.name);
+    } catch (error) { message('addMessage', '追加できませんでした: ' + error.message, 'error'); }
+  });
+});
+$('previewButton').addEventListener('click', async function() {
+  const content = $('previewText').value.trim();
+  if (!content) return message('previewMessage', '読み上げる文章を入力してください。', 'error');
+  const speed = $('speed').value, steps = $('steps').value;
+  const error = settingsError(speed, steps);
+  if (error) return message('previewMessage', error, 'error');
+  const saved = voices.find(v => v.name === selected)?.params || {};
+  const body = {text:content, voice:selected, num_candidates:+$('candidates').value};
+  if (speed && !isSavedSpeedInput(speed, saved)) body.duration_scale = 1 / +speed;
+  if (steps && +steps !== saved.num_steps) body.num_steps = +steps;
+  $('candidatesResult').replaceChildren();
+  message('previewMessage', '音声を生成中です。初回は時間がかかることがあります。');
+  await busy(this, async () => {
+    try {
+      const data = await api('/admin/preview', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+      for (const [index, encoded] of data.candidates.entries()) {
+        const row = document.createElement('div'); row.className = 'candidate';
+        const label = document.createElement('span'); label.textContent = '候補 ' + (index + 1);
+        const audio = document.createElement('audio'); audio.controls = true; audio.src = 'data:audio/wav;base64,' + encoded;
+        row.append(label, audio); $('candidatesResult').append(row);
+      }
+      message('previewMessage', data.candidates.length + '件の音声を生成しました（' + data.elapsed + '秒）。', 'success');
+    } catch (error) { message('previewMessage', '試聴できませんでした: ' + error.message, 'error'); }
+  });
+});
+$('saveButton').addEventListener('click', async function() {
+  const speed = $('speed').value, steps = $('steps').value;
+  if (!speed && !steps) return message('previewMessage', '保存する速さかステップ数を入力してください。', 'error');
+  const error = settingsError(speed, steps);
+  if (error) return message('previewMessage', error, 'error');
+  const voice = voices.find(v => v.name === selected);
+  if (!voice || selected === 'default') return message('previewMessage', '標準の声の設定は保存できません。', 'error');
+  const params = {...voice.params};
+  if (speed && !isSavedSpeedInput(speed, voice.params)) params.duration_scale = 1 / +speed;
+  if (steps) params.num_steps = +steps;
+  await busy(this, async () => {
+    try {
+      await api('/voices/' + encodeURIComponent(selected) + '/params', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({params})});
+      await loadVoices(false);
+      message('previewMessage', '「' + voiceLabel(voice) + '」の設定を保存しました。', 'success');
+    } catch (error) { message('previewMessage', '保存できませんでした: ' + error.message, 'error'); }
+  });
+});
+$('refreshStatus').addEventListener('click', () => { refreshStatus(); loadVoices().catch(error => message('voiceMessage', error.message, 'error')); });
+$('reloadVoices').addEventListener('click', async function() {
+  await busy(this, async () => {
+    try { await api('/voices/reload', {method:'POST'}); await loadVoices(); message('detailMessage', '声の一覧を更新しました。', 'success'); }
+    catch (error) { message('detailMessage', '更新できませんでした: ' + error.message, 'error'); }
+  });
+});
+$('reloadReadings').addEventListener('click', async function() {
+  await busy(this, async () => {
+    try { await api('/readings/reload', {method:'POST'}); message('detailMessage', '読み替え辞書を読み直しました。', 'success'); }
+    catch (error) { message('detailMessage', '読み直せませんでした: ' + error.message, 'error'); }
+  });
+});
+$('shutdownButton').addEventListener('click', async function() {
+  if (!confirm('ChatYomiだけを停止します。読み上げは使えなくなります。よろしいですか？')) return;
+  await busy(this, async () => {
+    try { await api('/admin/shutdown', {method:'POST'}); } catch (_) { /* 停止時は接続が切れる */ }
+    $('status').textContent = 'ChatYomiを停止しました';
+    message('detailMessage', '再開するときは start.cmd を実行してください。');
+  });
+});
+refreshStatus();
+loadVoices().catch(error => message('voiceMessage', '声を読み込めませんでした: ' + error.message, 'error'));
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+__pycache__/
+*.pyc
+
+# サーバの実行ログ。手元の記録であって成果物ではない
+server_run.log
+*.log
+
+# 環境ごとの設定。声の名前や API トークンが入るのでリポジトリには入れない。
+# 雛形は config.example.yaml にある
+config.yaml
+# config.save() が書き込み中に作る一時ファイル
+*.yaml.tmp
+
+# 声は環境ごとに登録し直す前提。リファレンス音声は個人の声そのもので、
+# ディレクトリ名にも名前が付くため、README 以外は追跡しない（voices/README.md 参照）
+voices/*
+!voices/README.md
+
+# 読み替え辞書のうち環境ごとの分。
+# 固有の名前や手元の事情が入るのでリポジトリには入れない。
+# 同梱の一般語辞書は readings.yaml の方
+readings.local*.yaml
+# 辞書に無かった英単語の記録。手元の作業ファイルであって成果物ではない
+readings.unknown.yaml
+# make_readings.py export が作る貼り付け用の文面
+readings.prompt.txt
+# LLM の返答を保存したファイル。手元の語彙が入るのでリポジトリに入れない。
+# 置き場所を決めておくこと（実際に tools/ 直下に置いて追跡してしまった）
+readings.reply*.txt
+tools/reading*.txt
+
+# TTS比較で生成した音声と採点結果。評価文そのものだけを追跡する。
+evaluation/results/
+evaluation/cases.local.json
+
+# Project-local Python environment
+.venv/
+.tmp/
+
+# Project-local installer settings
+.local/

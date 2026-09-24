@@ -1,0 +1,38 @@
+# Irodori TTS Reader の設定例。
+# setup.ps1 が初回だけ config.yaml へコピーする。
+
+# このPCだけで使う場合は127.0.0.1。他端末から使う場合は0.0.0.0。
+host: 127.0.0.1
+port: 8080
+
+# ループバック以外からのアクセスに要求される。hostを広げる場合は必ず変更する。
+api_token: change-me
+
+# 通常利用はIrodori-TTS-Server固定。dummyは自動検証専用。
+backend: irodori_server
+irodori_server_url: http://127.0.0.1:8088
+irodori_server_api_key: ''
+irodori_server_model: irodori-tts
+
+voices_dir: ./voices
+
+# 既定の音声。voices/ 配下のディレクトリ名。空ならモデル既定の声。
+current_voice: ''
+
+# サイトごとの音声。例: {claude: 声A, gemini: 声B}
+site_voices: {}
+
+# 読み替え辞書。英単語や記号をカタカナに置き換えてから合成する。
+readings_enabled: true
+# 辞書に無かった英単語を readings.unknown.yaml に記録する。
+readings_collect_unknown: true
+
+# wav48: 48kHz / wav24: 24kHz
+default_format: wav48
+
+# 同時に溜められるリクエスト数。超えると429を返す。
+queue_limit: 10
+
+# ブラウザからfetchする場合の許可元。ユーザースクリプトはCORS対象外。
+cors_origins:
+  - https://claude.ai
