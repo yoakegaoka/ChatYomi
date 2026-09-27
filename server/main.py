@@ -425,6 +425,7 @@ class PreviewRequest(BaseModel):
     # 生成ステップ数。小さいほど速いが音質が落ちる。実測（1文・参照音声あり）:
     # 未指定 1.99秒 / 32 1.78秒 / 24 1.59秒 / 20 1.54秒 / 16 1.40秒 / 12 1.31秒
     num_steps: int | None = Field(default=None, ge=4, le=40)
+    caption: str | None = Field(default=None, max_length=1000)
 
 
 @app.post("/admin/preview", dependencies=[Depends(require_token)])
@@ -440,6 +441,8 @@ async def preview(req: PreviewRequest):
     spoken = state.readings.prepare(req.text) if state.cfg.readings_enabled else req.text
     overrides = {k: v for k, v in (("duration_scale", req.duration_scale),
                                    ("num_steps", req.num_steps)) if v is not None}
+    if req.caption is not None:
+        overrides["caption"] = req.caption.strip()
     if overrides:
         voice = dataclasses.replace(voice, params={**voice.params, **overrides})
     t0 = time.time()

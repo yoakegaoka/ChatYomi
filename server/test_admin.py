@@ -33,6 +33,7 @@ class AdminTest(unittest.IsolatedAsyncioTestCase):
         self.voices.create("声A", None)
         self.voices.create("声B", None)
         self.inputs = []
+        self.params = []
         readings = SimpleNamespace(prepare=lambda value: value.replace("ABC", "エービーシー"))
         backend = SimpleNamespace(synthesize_candidates=self.synthesize)
         state = SimpleNamespace(cfg=self.cfg, voices=self.voices, readings=readings,
@@ -43,6 +44,7 @@ class AdminTest(unittest.IsolatedAsyncioTestCase):
 
     def synthesize(self, content, voice, count):
         self.inputs.append((content, voice.name, count))
+        self.params.append(dict(voice.params))
         return [b"wav"] * count
 
     def test_register_without_file_and_reject_duplicate(self):
@@ -60,6 +62,20 @@ class AdminTest(unittest.IsolatedAsyncioTestCase):
                                                          num_candidates=2))
         self.assertEqual(self.inputs, [("エービーシー", "声A", 2)])
         self.assertEqual(len(result["candidates"]), 2)
+
+    async def test_preview_caption_override_does_not_change_saved_voice(self):
+        self.voices.update_params("声A", {"caption": "元の説明"})
+        await main.preview(main.PreviewRequest(text="試聴", voice="声A", caption="新しい説明"))
+        self.assertEqual(self.params[-1]["caption"], "新しい説明")
+        self.assertEqual(self.voices.get("声A").params["caption"], "元の説明")
+
+    def test_default_voice_caption_is_saved_and_reloaded(self):
+        self.voices.update_params("default", {"caption": "落ち着いた声"})
+        self.assertEqual(self.voices.get("default").params["caption"], "落ち着いた声")
+        self.assertIsNone(self.voices.get("default").ref_audio)
+        self.assertEqual(VoiceStore(self.cfg.voices_path).get("default").params["caption"],
+                         "落ち着いた声")
+        self.assertTrue((self.cfg.voices_path / "default" / "voice.yaml").exists())
 
     def test_preview_limits_match_admin_controls(self):
         main.PreviewRequest(text="test", duration_scale=2 / 3, num_steps=40)

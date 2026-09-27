@@ -53,6 +53,13 @@ class Handler(BaseHTTPRequestHandler):
 
 
 class IrodoriServerBackendTest(unittest.TestCase):
+    def test_caption_without_reference_is_sent(self):
+        backend = IrodoriServerBackend("http://127.0.0.1:8088")
+        payload = backend._payload("試聴", VoiceConfig(name="説明のみ", params={"caption": "落ち着いた声"}))
+        self.assertEqual(payload["voice"], "none")
+        self.assertEqual(payload["irodori"]["caption"], "落ち着いた声")
+        self.assertNotIn("ref_wav", payload["irodori"])
+
     @classmethod
     def setUpClass(cls):
         cls.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)

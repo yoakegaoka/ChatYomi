@@ -103,9 +103,15 @@
     <h2 id="previewHeading">声を試す・調整する</h2>
     <div class="fields">
       <div><label for="previewVoice">試す声</label><select id="previewVoice"></select></div>
-      <div><label for="speed">話す速さ（倍）</label><input id="speed" type="number" min="0.5" max="1.5" step="any" inputmode="decimal"><p id="speedHint" class="hint"></p></div>
+      <div><label for="speed">話す速さ（倍）</label><input id="speed" type="number" min="0.5" max="1.5" step="0.1" inputmode="decimal"><p id="speedHint" class="hint"></p></div>
       <div><label for="steps">生成ステップ数（4～40）</label><input id="steps" type="number" min="4" max="40" step="1" inputmode="numeric"><p id="stepsHint" class="hint">空欄なら標準の値を使います。少なくすると生成が速くなりますが、音質が変わります。</p></div>
     </div>
+    <details id="captionSettings">
+      <summary>対応モデル用：読み上げる声のイメージ</summary>
+      <p class="hint">通常起動の v3 標準モデルでは使えません。v4.1 などに切り替えた場合に、参照音声なしの声質を指定できます。</p>
+      <label for="caption">読み上げる声のイメージ</label>
+      <textarea id="caption" rows="2" maxlength="1000" placeholder="例: 落ち着いた低めの女性の声。やさしく、はっきり話す。"></textarea>
+    </details>
     <label for="previewText">読み上げる文章</label>
     <textarea id="previewText" rows="3">今日はいい天気ですね。散歩にでも出かけませんか。</textarea>
     <details>
@@ -202,14 +208,16 @@ function showSettings() {
   const speed = savedSpeed(params);
   $('speed').value = speed === null ? '' : formatSpeed(speed);
   $('steps').value = params.num_steps ?? '';
+  $('caption').value = params.caption ?? '';
+  $('captionSettings').open = !!params.caption;
   $('speedHint').textContent = speed === null
     ? '設定値なし。標準の速さを使います（入力範囲: 0.5～1.5倍）。'
     : '保存済みの値です（入力範囲: 0.5～1.5倍）。';
   $('stepsHint').textContent = params.num_steps == null
     ? '設定値なし。標準の値を使います。少なくすると速くなりますが、音質が変わります。'
     : '保存済みの値です。少なくすると速くなりますが、音質が変わります。';
-  $('saveButton').disabled = selected === 'default';
-  message('previewMessage', selected === 'default' ? '標準の声の調整値は保存できません。' : '');
+  $('saveButton').disabled = !voice;
+  message('previewMessage', '');
   $('candidatesResult').replaceChildren();
 }
 function selectVoice(name) {
@@ -292,13 +300,13 @@ async function renderSites() {
   }
 }
 async function loadVoices(preserveEdits = true) {
-  const previous = selected, speed = $('speed').value, steps = $('steps').value;
+  const previous = selected, speed = $('speed').value, steps = $('steps').value, caption = $('caption').value;
   const data = await api('/voices');
   voices = data.voices; current = data.current;
   if (!voices.some(v => v.name === selected)) selected = current;
   renderVoices(); showSettings(); await renderSites();
   if (preserveEdits && selected === previous) {
-    $('speed').value = speed; $('steps').value = steps;
+    $('speed').value = speed; $('steps').value = steps; $('caption').value = caption;
   }
 }
 async function refreshStatus() {
@@ -354,6 +362,8 @@ $('previewButton').addEventListener('click', async function() {
   const body = {text:content, voice:selected, num_candidates:+$('candidates').value};
   if (speed && !isSavedSpeedInput(speed, saved)) body.duration_scale = 1 / +speed;
   if (steps && +steps !== saved.num_steps) body.num_steps = +steps;
+  const caption = $('caption').value.trim();
+  if (caption !== (saved.caption ?? '')) body.caption = caption;
   $('candidatesResult').replaceChildren();
   message('previewMessage', '音声を生成中です。初回は時間がかかることがあります。');
   await busy(this, async () => {
@@ -371,14 +381,16 @@ $('previewButton').addEventListener('click', async function() {
 });
 $('saveButton').addEventListener('click', async function() {
   const speed = $('speed').value, steps = $('steps').value;
-  if (!speed && !steps) return message('previewMessage', '保存する速さかステップ数を入力してください。', 'error');
   const error = settingsError(speed, steps);
   if (error) return message('previewMessage', error, 'error');
   const voice = voices.find(v => v.name === selected);
-  if (!voice || selected === 'default') return message('previewMessage', '標準の声の設定は保存できません。', 'error');
+  if (!voice) return message('previewMessage', '声を選んでください。', 'error');
   const params = {...voice.params};
   if (speed && !isSavedSpeedInput(speed, voice.params)) params.duration_scale = 1 / +speed;
   if (steps) params.num_steps = +steps;
+  const caption = $('caption').value.trim();
+  if (caption) params.caption = caption;
+  else delete params.caption;
   await busy(this, async () => {
     try {
       await api('/voices/' + encodeURIComponent(selected) + '/params', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({params})});

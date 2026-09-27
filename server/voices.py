@@ -180,7 +180,7 @@ class VoiceStore:
 
     def update_params(self, name: str, params: dict) -> VoiceConfig:
         v = self.get(name)
-        if not v or v.name == DEFAULT_VOICE:
+        if not v:
             raise KeyError(name)
         scale = params.get("duration_scale")
         if scale is not None and (
@@ -194,6 +194,8 @@ class VoiceStore:
         ):
             raise ValueError("生成ステップ数は4～40で指定してください")
         d = self.root / v.name
+        if v.name == DEFAULT_VOICE:
+            d.mkdir(parents=True, exist_ok=True)
         display = params.pop("display_name", v.display_name)
         data = dict(params)
         if display and display != v.name:
