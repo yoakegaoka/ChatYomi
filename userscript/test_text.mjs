@@ -33,17 +33,19 @@ const Node = { TEXT_NODE: 3, ELEMENT_NODE: 1 };
 
 function text(value) { return { nodeType: Node.TEXT_NODE, nodeValue: value }; }
 
-// セレクタの照合。タグ名・クラス1個・属性の有無だけ。本物の CSS 解釈はしない
+// セレクタの照合。タグ名・クラス1個・属性の有無と部分一致だけ。本物の CSS 解釈はしない
 function matchOne(node, sel) {
   sel = sel.trim();
   if (sel.startsWith('[')) {
     const inner = sel.slice(1, -1);
-    const m = /^([^^=]+)(\^?)=/.exec(inner);
+    const m = /^([^=^*]+)([\^*]?)=/.exec(inner);
     if (!m) return inner in (node.attrs || {});      // [attr] 存在するか
-    const v = (node.attrs || {})[m[1]];
+    const v = m[1] === 'class' ? node.className : (node.attrs || {})[m[1]];
     if (v === undefined) return false;
     const want = inner.slice(m[0].length).replace(/^"|"$/g, '');
-    return m[2] ? v.startsWith(want) : v === want;   // [attr^="x"] / [attr="x"]
+    if (m[2] === '^') return v.startsWith(want);
+    if (m[2] === '*') return v.includes(want);
+    return v === want;
   }
   if (sel.startsWith('.')) {
     return (node.className || '').split(/\s+/).filter(Boolean).includes(sel.slice(1));
@@ -77,6 +79,9 @@ function el(tagName, children = [], className = '', attrs = {}) {
 const cfg = { codeMode: 'skip', tableMode: 'skip', maxChars: 200 };
 // nodeToText はサイト固有の除外セレクタを見る。テストでは除外なしにする
 const site = { sel: { drop: null }, stripText: null };
+const chatgptSel = new Function(
+  SRC.slice(SRC.indexOf('  const SITES = {'), SRC.indexOf('  function detectSite()')) +
+  'return SITES.chatgpt.sel;')();
 const src = [
   'const BLOCK_TAGS = new Set(["P","DIV","LI","H1","H2","H3","H4","H5","H6","BLOCKQUOTE","TR","SECTION","ARTICLE"]);',
   'const DROP_TAGS = new Set(["SCRIPT","STYLE","BUTTON","SVG","NOSCRIPT"]);',
@@ -267,8 +272,9 @@ console.log('extractText — 地の文だけを読む（ChatGPT の prose）');
     el('div', [el('button', [text('コピー')])]),
   ], '', { 'data-testid': 'conversation-turn-3' });
 
-  site.sel.body = '[data-message-author-role="assistant"]';
-  site.sel.prose = '.markdown';
+  site.sel.body = chatgptSel.body;
+  site.sel.prose = chatgptSel.prose;
+  check('Work モードの応答行を見つける', el('div', [row]).querySelectorAll(chatgptSel.row).length, 1);
   check('応答の地の文だけを読む',
         normalize(extractText(el('div', [row]))), 'これは地の文です。');
 
@@ -286,6 +292,18 @@ console.log('extractText — 地の文だけを読む（ChatGPT の prose）');
   ]);
   check('ChatGPT でも prose が無ければフォールバック',
         normalize(extractText(el('div', [row2]))), 'これはマークダウン要素が無い応答です。');
+
+  // Chat モードでは1つのターンが利用者の発言と回答を両方含む。
+  const chatTurn = el('div', [
+    el('div', [text('これは利用者の発言です。')], 'bg-user-message'),
+    el('div', [el('p', [text('これは回答です。')])], 'MarkdownRoot-rZKhxa'),
+  ], '', { 'data-turn-key': 'turn-1' });
+  check('Chat モードの応答行を見つける',
+        el('div', [chatTurn]).querySelectorAll(chatgptSel.row).length, 1);
+  check('Chat モードの発言行を見つける',
+        chatTurn.querySelectorAll(chatgptSel.userRow).length, 1);
+  check('Chat モードでは回答だけを抽出する',
+        normalize(extractText(chatTurn)), 'これは回答です。');
 
   site.sel.body = null; site.sel.prose = null;
 }
@@ -615,6 +633,10 @@ console.log('初見の行をどう扱うか');
   check('送信と同じ観測なら持ち越す', v({ armedAt: 200 }), 'wait');
   check('実際の送信操作と発言行の後にある短い回答は受け付ける',
         v({ armedAt: 200, trustedSend: true, afterUser: true }), 'new');
+  check('Chat モードで発言と回答が同じターンにある短い回答を受け付ける',
+        v({ armedAt: 200, trustedSend: true, containsUser: true }), 'new');
+  check('同じターンでも送信操作を確認できなければ待つ',
+        v({ armedAt: 200, containsUser: true }), 'wait');
   check('送信操作より前の回答行は受け付けない',
         v({ armedAt: 200, trustedSend: true, afterUser: false }), 'wait');
   check('送信操作があっても末尾以外は受け付けない',

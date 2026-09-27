@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatYomi — AIチャットの回答を読み上げる
 // @namespace    tts-readaloud
-// @version      1.26.8
+// @version      1.26.9
 // @description  ChatYomi: Claude / Microsoft Copilot / Gemini / ChatGPT の応答を自宅PCのIrodori-TTSで読み上げる
 // @match        https://claude.ai/*
 // @match        https://copilot.microsoft.com/*
@@ -212,17 +212,21 @@
         // 応答1件のコンテナは会話のターン（実機確認済み）。
         // 操作ボタンは本文の div の外、このターンの中にあるため、
         // 後で sel.complete を入れられるようにここを行とする。
-        // 利用者側のターンにも一致するが、本文が空の行は読まれない。
+        // Work モードでは利用者側のターンにも一致するが、本文が空の行は読まれない。
         //
         // タグ名は付けない。推定で article と書いたが実物は section だった。
         // 目印は data-testid のほうであり、タグは変わりうる
-        row: '[data-testid^="conversation-turn-"]',
-        // 行の直下には "ChatGPT:" というスクリーンリーダー用のラベルが付くが、
-        // それはこの本文要素の外にあるので、本文だけを読めば混ざらない（実機確認済み）
-        body: '[data-message-author-role="assistant"]',
+        // Chat モードは発言と回答を同じ data-turn-key の中に置く。
+        // Work モードの conversation-turn と両方を対象にする。
+        row: '[data-testid^="conversation-turn-"],[data-turn-key]',
+        // Work モードのスクリーンリーダー用ラベルと、Chat モードの利用者の
+        // 発言を巻き込まないよう、どちらも回答の本文だけを選ぶ。
+        // Chat モードには発言者属性が無く、回答は MarkdownRoot に入る。
+        body: '[data-message-author-role="assistant"],[class*="MarkdownRoot-"]',
         // 地の文はマークダウンのコンテナに入る。Claude / Gemini と同じ考え方
         prose: '.markdown',
-        // 生成完了後に出るコピーボタン（実機確認済み）。行の中にある。
+        // Work モードで生成完了後に出るコピーボタン（実機確認済み）。
+        // Chat モードでは見つからず、settleMs の静止判定へ落ちる。
         // aria-label は "回答をコピーする" だが表示言語で変わるので使わない
         complete: '[data-testid="copy-turn-action-button"]',
         // Web検索の出典元。段落の中にインライン要素として埋め込まれるため、
@@ -235,9 +239,9 @@
         // UI改修で変わっても、もう片方で落ちる。実機ではどちらの要素も
         // 出典元だけを含んでおり、地の文を巻き込まないことを確認した
         drop: '[data-testid="webpage-citation-pill"],[data-content-reference-start]',
-        // 利用者の発言（実機確認済み）。本文と同じ属性の値違いで、
-        // 会話3往復で3個に一致することを確かめた。短い応答の取りこぼしを塞ぐ
-        userRow: '[data-message-author-role="user"]',
+        // 利用者の発言。Work モードは本文と同じ属性の値違い、Chat モードは
+        // 吹き出しのクラス。送信を観測して短い応答の取りこぼしを塞ぐ。
+        userRow: '[data-message-author-role="user"],.bg-user-message',
       },
       streamingAttr: null,
       stream: true,
@@ -1298,8 +1302,11 @@
     // 読み込み中は、出来上がって見えるかに関わらず履歴とみなす。
     // 描画の速さに依存しない唯一の判断材料
     if (o.loading) return o.len > 0 ? 'preexisting' : 'wait';
+    // Chat モードでは発言と回答が同じターンに入る。実際の送信操作と
+    // 発言行を同時に確認できたときだけ、同一観測の短い回答も受け付ける。
     if (acceptsAsNew(o.armedAt, o.now, o.isLast, o.hasBody) ||
-        (o.trustedSend && o.afterUser && o.armedAt === o.now && o.isLast && o.hasBody)) return 'new';
+        (o.trustedSend && (o.afterUser || o.containsUser) &&
+         o.armedAt === o.now && o.isLast && o.hasBody)) return 'new';
     // 初見で既に出来上がっているなら過去の応答
     if (o.len > 0 && !o.active && o.looksDone) return 'preexisting';
     // 判断が付かないときは持ち越す。読み上げが遅れるほうが、
@@ -1479,6 +1486,7 @@
           trustedSend: !!trustedUserRow,
           afterUser: !!(trustedUserRow &&
             (trustedUserRow.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING)),
+          containsUser: !!(trustedUserRow && row.contains(trustedUserRow)),
           now,
           isLast: row === list[list.length - 1],
           hasBody: !!row.querySelector(site.sel.body),
