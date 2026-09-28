@@ -165,9 +165,9 @@ console.log('splitSentences — 分割');
   check('分割後は全て200字以内', parts.every((s) => s.length <= 200), true);
 }
 
-console.log('normalize — サイト固有のラベル除去（Copilot）');
+console.log('normalize — サイト固有のラベル除去（Copilot Chat）');
 {
-  // Copilot の本文要素には "Copilot said:" が入っている（実機確認済み）
+  // Copilot Chat の本文要素には "Copilot said:" が入っている（実機確認済み）
   site.stripText = [/^[ 	]*Copilot said:[ 	]*/gmi, /^[ 	]*You said:[ 	]*/gmi];
   // 実機の本文は "Copilot said:" のあと空行が続く
   const NL = String.fromCharCode(10);
@@ -409,7 +409,7 @@ console.log('nodeToText — 出典元チップの除去（Claude の data-not-pr
   site.sel.drop = null;
 }
 
-console.log('nodeToText — 思い出の通知の除去（Copilot の memory-*）');
+console.log('nodeToText — 思い出の通知の除去（Copilot Chat の memory-*）');
 {
   // 「思い出が更新されました。」は本文要素の中の、しかも本文より前に入る。
   // 読み上げの先頭に紛れ込むうえ、直後の "Copilot said:" が文字列の先頭では
@@ -471,7 +471,7 @@ console.log('isComplete — 生成完了の判定');
   check('完了要素が無ければ静止判定へ落ちる（未達）', run(r2, 100), false);
   check('完了要素が無くても静止すれば確定', run(r2, 1300), true);
 
-  // --- 従来の AND（Copilot）---
+  // --- 従来の AND（Copilot Chat）---
   siteC = { sel: { complete: '[copy]' }, streamingAttr: null, settleMs: 1500 };
   const r3 = row(true, null), r4 = row(false, null);
   lastChange.set(r3, 0); lastChange.set(r4, 0);
@@ -531,7 +531,7 @@ console.log('nodeToText — 出典元の除去（ChatGPT の引用ピル）');
 
 console.log('nodeToText — PRE ではないコードブロック（sel.code）');
 {
-  // Copilot はコードを専用のビューアで組んでおり、行番号・コード本文・言語ラベルが
+  // Copilot Chat はコードを専用のビューアで組んでおり、行番号・コード本文・言語ラベルが
   // 別々の要素に入っている。そのままだと行番号まで読み上げる
   const viewer = el('div', [
     el('span', [text('Python')]),
@@ -618,7 +618,7 @@ console.log('行の差し替えへの追従');
     extractFn('resumeIndex') + extractFn('isContinuation') + '; return isContinuation;')();
 
   // 生成中に行の要素が作り直されるサイトがある。打ち切って作り直すと
-  // 鳴らしている文が途中で切れ、先頭から読み直しになる（Copilot で発生）
+  // 鳴らしている文が途中で切れ、先頭から読み直しになる（Copilot Chat で発生）
   check('同じ文が並んでいれば続き', isContinuation(['あ。', 'い。'], ['あ。', 'い。', 'う。']), true);
   check('同じ長さでも続き', isContinuation(['あ。'], ['あ。']), true);
   check('短くなっていたら続きではない', isContinuation(['あ。', 'い。'], ['あ。']), false);
@@ -643,7 +643,7 @@ console.log('URL が変わった理由');
   check('送信を観測していなければ切り替え', v({}), 'switch');
 
   // 切り替えれば行ごと消えるので、生成中の応答が生きていること自体が
-  // 同じ会話にいる証拠になる。Copilot は応答が長いと送信から5秒以上たってから
+  // 同じ会話にいる証拠になる。Copilot Chat は応答が長いと送信から5秒以上たってから
   // URL に ID が振られ、読み上げ中の応答が打ち切られていた（実機で発生）
   check('生成中なら時間が経っていても新規チャット',
         v({ generating: true, sinceSend: 60000 }), 'newchat');

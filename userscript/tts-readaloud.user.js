@@ -2,7 +2,7 @@
 // @name         ChatYomi — AIチャットの回答を読み上げる
 // @namespace    tts-readaloud
 // @version      1.26.13
-// @description  ChatYomi: Claude / Microsoft Copilot / Gemini / ChatGPT の応答を自宅PCのIrodori-TTSで読み上げる
+// @description  ChatYomi: Claude / Copilot Chat / Gemini / ChatGPT の応答を自宅PCのIrodori-TTSで読み上げる
 // @match        https://claude.ai/*
 // @match        https://copilot.microsoft.com/*
 // @match        https://m365.cloud.microsoft/*
@@ -105,7 +105,7 @@
     // m365.cloud.microsoft/chat で実機確認した DOM に基づく。
     // Claude と違い生成状態を示す属性が無く、代わりに loading-message 要素が出る。
     copilot: {
-      label: 'Microsoft Copilot',
+      label: 'Copilot Chat',
       host: /(^|\.)copilot\.microsoft\.com$|(^|\.)cloud\.microsoft$/,
       sel: {
         row: '[data-testid="copilot-message-div"]',
@@ -163,7 +163,7 @@
     },
 
     // gemini.google.com/app。Angular のカスタム要素で組まれている。
-    // Copilot と同じく生成状態を示す属性が無いので静止判定を使う。
+    // Copilot Chat と同じく生成状態を示す属性が無いので静止判定を使う。
     // ここのセレクタは未検証。合わなければ設定パネルの「診断」で特定して直すこと。
     gemini: {
       label: 'Gemini',
@@ -203,7 +203,7 @@
     // chatgpt.com（旧 chat.openai.com）。
     //
     // streaming はあえて空にしてある。外すと isGenerating() が真のまま固まり、
-    // どの応答も読まれなくなる（Copilot の loading-message がそうだった）。
+    // どの応答も読まれなくなる（Copilot Chat の loading-message がそうだった）。
     // 未設定なら静止判定へ落ちるだけで、遅くなっても止まりはしない。
     chatgpt: {
       label: 'ChatGPT',
@@ -719,7 +719,7 @@
    *
    * SPA では生成中に行の要素そのものが作り直されることがある。
    * 要素が変わっただけで打ち切ると、鳴らしている文が途中で切れ、
-   * 先頭から読み直しになる（Copilot で発生）。しかも先行合成の結果は
+   * 先頭から読み直しになる（Copilot Chat で発生）。しかも先行合成の結果は
    * 使い切っているので、同じ文を合成し直すことになる（音が変わる）。
    *
    * 既に送った文がすべて先頭から一致し、かつ短くなっていなければ続きとみなす。
@@ -809,7 +809,7 @@
     // 逐次読み上げの器。読み始める前でも作っておき、確定した文を溜めていく
     //
     // **別の行に見えても、いきなり作り直さない。** 生成中に要素が差し替わる
-    // サイトがあり、作り直すと先頭から読み直しになる（Copilot で発生）
+    // サイトがあり、作り直すと先頭から読み直しになる（Copilot Chat で発生）
     // まだ1文も送っていないなら比べる材料が無い。作り直してよい
     if (streaming && live && live.row !== row && live.emitted.length &&
         isContinuation(live.emitted, fixed)) {
@@ -1236,7 +1236,7 @@
     // 切り替えれば行ごと DOM から消えるので、残っていること自体が
     // 同じ会話にいる証拠になる。時間で測るより確実。
     //
-    // Copilot は応答が長いと、送信から5秒以上たってから URL に ID が振られる。
+    // Copilot Chat は応答が長いと、送信から5秒以上たってから URL に ID が振られる。
     // 時間だけで見ていたため切り替えと誤判定し、読み上げ中の応答が打ち切られて
     // 先頭から読み直しになっていた（実機で発生）
     if (o.generating) return 'newchat';
@@ -1402,7 +1402,7 @@
   /**
    * ページ全体で生成中か。生成は同時に1件しか走らないので文書全体で見てよい。
    *
-   * 要素の「存在」では判定しない。Copilot の loading-message は全メッセージに
+   * 要素の「存在」では判定しない。Copilot Chat の loading-message は全メッセージに
    * 1個ずつ常駐しており、存在の有無では区別できないため、表示状態を見る。
    * 仮にこの要素が常に非表示でも isGenerating() が false を返すだけで、
    * settleMs による静止判定へ安全に縮退する。
@@ -1437,7 +1437,7 @@
 
     // 完了要素の出現そのものを確定とみなす。settleMs の待ちを丸ごと省ける
     if (site.completeIsFinal && seen) return true;
-    // 従来どおり「完了要素あり」を静止判定の前提条件として使う（Copilot）
+    // 従来どおり「完了要素あり」を静止判定の前提条件として使う（Copilot Chat）
     if (!site.completeIsFinal && seen === false) return false;
 
     const t = lastChange.get(row);
@@ -2003,7 +2003,7 @@
    * コードブロックがどの要素で組まれているかを突き止める。
    *
    * PRE 要素なら cfg.codeMode で除去できるが、独自のコードビューアで
-   * 組んでいるサイトでは効かない。Copilot は行番号とコード本文が別の要素に
+   * 組んでいるサイトでは効かない。Copilot Chat は行番号とコード本文が別の要素に
    * 分かれており、行番号まで読み上げていた（実機で発覚）。
    *
    * 除去に使う要素は自分で選ぶしかないので、候補になる祖先を並べて出す。

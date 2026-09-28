@@ -1,6 +1,6 @@
 # ChatYomiのブラウザ読み上げ機能
 
-このフォルダーの `tts-readaloud.user.js` は、ChatYomiがClaude、Microsoft Copilot、Gemini、ChatGPTの新しい回答を読み上げるためのユーザースクリプトです。
+このフォルダーの `tts-readaloud.user.js` は、ChatYomiがClaude、Copilot Chat、Gemini、ChatGPTの新しい回答を読み上げるためのユーザースクリプトです。
 
 インストール方法は[Windowsで使い始める](../docs/windows-onboarding.md)、ボタンの操作やAndroidでの利用は[詳しい使い方](../docs/usage.md)を参照してください。
 

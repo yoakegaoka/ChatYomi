@@ -1,6 +1,6 @@
 ﻿# Windowsで使い始める
 
-このツールは、Claude・Copilot・Gemini・ChatGPTの回答を、PC上のIrodori-TTSで読み上げます。
+このツールは、Claude・Copilot Chat・Gemini・ChatGPTの回答を、PC上のIrodori-TTSで読み上げます。
 
 ## 用意するもの
 
@@ -50,7 +50,7 @@
 1. FirefoxまたはChromeへ、ViolentmonkeyかTampermonkeyを追加します。
 2. サーバーを起動した状態で、<http://127.0.0.1:8080/tts-readaloud.user.js> を開きます。
 3. 表示されたインストール画面でインストールします。
-4. Claude、Copilot、Gemini、ChatGPTのいずれかを開きます。
+4. Claude、Copilot Chat、Gemini、ChatGPTのいずれかを開きます。
 5. 画面右下の丸いボタンを1回押して、灰色から青色にします。
 6. AIへ質問します。回答が完成すると読み上げが始まります。
 

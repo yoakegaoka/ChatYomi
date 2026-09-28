@@ -1,6 +1,6 @@
 # ChatYomi — AIチャットの回答を好きな声で読み上げる
 
-ChatYomiは、Claude、Microsoft Copilot、Gemini、ChatGPTの回答を、PCで動かすIrodori-TTSで読み上げます。ブラウザのユーザースクリプトが新しい回答を検知し、音声はローカルの[Irodori-TTS-Server](https://github.com/Aratako/Irodori-TTS-Server)で生成します。
+ChatYomiは、Claude、Copilot Chat、Gemini、ChatGPTの回答を、PCで動かすIrodori-TTSで読み上げます。ブラウザのユーザースクリプトが新しい回答を検知し、音声はローカルの[Irodori-TTS-Server](https://github.com/Aratako/Irodori-TTS-Server)で生成します。
 
 AIチャットの標準の読み上げ音声が好みに合わず、回答を自分で選んだ声で聞きたい人向けのツールです。
 
@@ -31,11 +31,11 @@ Windows 11、Python 3.11以上、Irodori-TTSを動かせるNVIDIA GPUが必要�
 
 音声ファイルや個人用の設定は各自の環境で用意します。配布物に声のデータは含まれません。
 
-## 技術者向け：システム構成
+## システム構成
 
 ```mermaid
 flowchart LR
-    A["AIチャット<br/>Claude / Copilot / Gemini / ChatGPT"] --> B["ブラウザのユーザースクリプト<br/>新しい回答を検知・文に分割・順に再生"]
+    A["AIチャット<br/>Claude / Copilot Chat / Gemini / ChatGPT"] --> B["ブラウザのユーザースクリプト<br/>新しい回答を検知・文に分割・順に再生"]
     B -- "POST /synthesize<br/>HTTP :8080" --> C["ChatYomiのラッパーサーバー（FastAPI）<br/>声の割り当て・読み替え辞書・合成キュー<br/>WAV変換・管理画面"]
     C -- "POST /v1/audio/speech<br/>HTTP :8088" --> D["Irodori-TTS-Server<br/>GPUで音声を合成"]
     D -- "WAV" --> C
@@ -43,6 +43,16 @@ flowchart LR
 ```
 
 ポート番号は既定値です。ブラウザにはPCのFirefoxまたはChromeを使用でき、AndroidではFirefoxから同じ家庭内ネットワーク上のChatYomiに接続します。Irodori-TTS-Serverは別途導入します。
+
+## 免責事項と利用上の注意
+
+ChatYomiは現状のまま提供します。読み上げの正確性や、各AIチャットの画面変更後も動作し続けることは保証しません。保証と責任の条件は[MIT License](LICENSE)を参照してください。
+
+回答の一部を読み飛ばしたり、誤って読み上げたりする場合があります。重要な内容は、音声だけで判断せず画面上の原文を確認してください。
+
+参照音声を登録する際は、その音声を使用する権利と、必要な本人の同意を確認してください。利用するAIチャットや音声モデルの条件にも従ってください。
+
+ChatYomiはClaude、Copilot Chat、Gemini、ChatGPT、Irodori-TTSの各提供者による公式製品ではありません。
 
 ## ライセンス
 

@@ -75,7 +75,7 @@
     <ol>
       <li>下の「声を試す」で読み上げを確認します。声を登録しなくても試せます。</li>
       <li>ブラウザに読み上げ機能を追加します。</li>
-      <li>Claude、Copilot、Gemini、ChatGPTで丸いボタンを押し、読み上げを有効にします。</li>
+      <li>Claude、Copilot Chat、Gemini、ChatGPTで丸いボタンを押し、読み上げを有効にします。</li>
     </ol>
     <p class="hint">初回の音声生成には、モデルの準備で時間がかかることがあります。</p>
   </details>
@@ -154,7 +154,7 @@
 <script>
 'use strict';
 const $ = (id) => document.getElementById(id);
-const labels = { claude:'Claude', copilot:'Microsoft Copilot', gemini:'Gemini', chatgpt:'ChatGPT' };
+const labels = { claude:'Claude', copilot:'Copilot Chat', gemini:'Gemini', chatgpt:'ChatGPT' };
 const siteOrder = ['chatgpt', 'gemini', 'claude', 'copilot'];
 const minSpeed = 0.5, maxSpeed = 1.5, minSteps = 4, maxSteps = 40;
 let voices = [], current = 'default', selected = '';
