@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatYomi — AIチャットの回答を読み上げる
 // @namespace    tts-readaloud
-// @version      1.26.9
+// @version      1.26.13
 // @description  ChatYomi: Claude / Microsoft Copilot / Gemini / ChatGPT の応答を自宅PCのIrodori-TTSで読み上げる
 // @match        https://claude.ai/*
 // @match        https://copilot.microsoft.com/*
@@ -218,11 +218,12 @@
         // 目印は data-testid のほうであり、タグは変わりうる
         // Chat モードは発言と回答を同じ data-turn-key の中に置く。
         // Work モードの conversation-turn と両方を対象にする。
-        row: '[data-testid^="conversation-turn-"],[data-turn-key]',
+        // 未ログイン画面では各ターンが data-message-role 付きの li になる。
+        row: '[data-testid^="conversation-turn-"],[data-turn-key],[data-message-role="assistant"]',
         // Work モードのスクリーンリーダー用ラベルと、Chat モードの利用者の
         // 発言を巻き込まないよう、どちらも回答の本文だけを選ぶ。
         // Chat モードには発言者属性が無く、回答は MarkdownRoot に入る。
-        body: '[data-message-author-role="assistant"],[class*="MarkdownRoot-"]',
+        body: '[data-message-author-role="assistant"],[class*="MarkdownRoot-"],[data-message-role="assistant"]',
         // 地の文はマークダウンのコンテナに入る。Claude / Gemini と同じ考え方
         prose: '.markdown',
         // Work モードで生成完了後に出るコピーボタン（実機確認済み）。
@@ -238,10 +239,10 @@
         // data-content-reference-start はそれを包む印。どちらか片方が
         // UI改修で変わっても、もう片方で落ちる。実機ではどちらの要素も
         // 出典元だけを含んでおり、地の文を巻き込まないことを確認した
-        drop: '[data-testid="webpage-citation-pill"],[data-content-reference-start]',
+        drop: '[data-testid="webpage-citation-pill"],[data-content-reference-start],.sr-only',
         // 利用者の発言。Work モードは本文と同じ属性の値違い、Chat モードは
         // 吹き出しのクラス。送信を観測して短い応答の取りこぼしを塞ぐ。
-        userRow: '[data-message-author-role="user"],.bg-user-message',
+        userRow: '[data-message-author-role="user"],.bg-user-message,[data-message-role="user"]',
       },
       streamingAttr: null,
       stream: true,
@@ -482,10 +483,19 @@
    * sel.prose に一致する要素が1つも無い場合は本文要素をそのまま読む。
    * セレクタが古くなっても無音にはならないようにするため。
    */
+  function bodyNodes(row) {
+    // 未ログインの ChatGPT では行自身が本文要素。querySelectorAll は自身を含まない。
+    return row.matches(site.sel.body) ? [row] : [...row.querySelectorAll(site.sel.body)];
+  }
+
+  function hasBody(row) {
+    return bodyNodes(row).length > 0;
+  }
+
   function extractText(row) {
-    const bodies = row.querySelectorAll(site.sel.body);
+    const bodies = bodyNodes(row);
     if (!bodies.length) return '';
-    return [...bodies].map((body) => {
+    const extracted = [...bodies].map((body) => {
       if (site.sel.prose) {
         const proses = body.querySelectorAll(site.sel.prose);
         // **生成中だけ入れ物が割れることがある。** 確定後に診断しても
@@ -510,6 +520,13 @@
       }
       return nodeToText(body);
     }).join('\n');
+    // 未ログイン画面では回答行自身が本文なので、先頭の発言者ラベルが混ざる。
+    // 実機の未ログイン画面では「ChatGPT:\n」が先頭に付く。
+    // .sr-only 以外の要素や、ブロック要素で改行されたラベルにも対応する。
+    // 回答本文の「ChatGPTの説明」のような語は残す。
+    return row.matches('[data-message-role="assistant"]')
+      ? extracted.replace(/^\s*ChatGPT(?:\s+said)?[ \t]*[:：]\s*|^\s*ChatGPT[ \t]*\n\s*/i, '')
+      : extracted;
   }
 
   /**
@@ -1489,7 +1506,7 @@
           containsUser: !!(trustedUserRow && row.contains(trustedUserRow)),
           now,
           isLast: row === list[list.length - 1],
-          hasBody: !!row.querySelector(site.sel.body),
+          hasBody: hasBody(row),
           active: active.has(row),
           looksDone: looksDone(row),
         });
@@ -1497,7 +1514,7 @@
           recordDetection('末尾の応答行: 判定=' + verdict +
                           ' 読み込み中=' + (now < loadingUntil) +
                           ' 送信待ち=' + !!armedAt +
-                          ' 本文要素=' + !!row.querySelector(site.sel.body));
+                          ' 本文要素=' + hasBody(row));
         }
         if (verdict === 'preexisting') {
           preexisting.add(row);
@@ -1640,7 +1657,7 @@
     }
 
     list.forEach((row, i) => {
-      const bodies = row.querySelectorAll(site.sel.body);
+      const bodies = bodyNodes(row);
       const txt = normalize(extractText(row));
       const settled = lastChange.has(row)
         ? (now - lastChange.get(row)).toFixed(0) + 'ms'
@@ -1807,17 +1824,17 @@
                    'data-perf-row', 'data-role', 'data-author', 'role'];
     // 本文を含む行だけを数える。ChatGPT のように sel.row が利用者のターンにも
     // 一致するサイトでは、そのまま数えると倍になり並び順が狂う（実機で発生）
-    const answers = [...rows()].filter((r) => r.querySelector(site.sel.body)).length;
+    const answers = [...rows()].filter(hasBody).length;
 
     const seen = new Map();
     for (const el of document.body.querySelectorAll('*')) {
       // 応答を含む要素は利用者の発言ではない
-      if (el.querySelector(site.sel.body)) continue;
+      if (hasBody(el)) continue;
       // 応答の内側にある要素も違う。本文の一部やツールバーが候補に紛れる。
       // ChatGPT のように sel.row が利用者のターンにも一致するサイトがあるので、
       // 「行に属している」ではなく「応答の行に属している」で除く
       const owner = el.closest(site.sel.row);
-      if (owner && owner.querySelector(site.sel.body)) continue;
+      if (owner && hasBody(owner)) continue;
       const text = (el.textContent || '').trim();
       if (text.length < 2) continue;
 
@@ -1870,7 +1887,7 @@
    */
   function proseSurveyLines(row) {
     const blocks = [];
-    for (const body of row.querySelectorAll(site.sel.body)) {
+    for (const body of bodyNodes(row)) {
       for (const el of body.querySelectorAll(site.sel.prose)) blocks.push({ el, body });
     }
 
@@ -1956,7 +1973,7 @@
       if (node.nodeType !== Node.ELEMENT_NODE) return;
       for (const c of node.childNodes) walk(c, depth + 1);
     };
-    for (const body of row.querySelectorAll(site.sel.body)) walk(body, 0);
+    for (const body of bodyNodes(row)) walk(body, 0);
 
     if (!hits.length) {
       console.log('[tts] 読み上げ対象に不要な文言は見つからなかった');
@@ -2013,7 +2030,7 @@
       if (node.matches && site.sel.drop && node.matches(site.sel.drop)) return;
       for (const c of node.childNodes) walk(c);
     };
-    for (const body of row.querySelectorAll(site.sel.body)) walk(body);
+    for (const body of bodyNodes(row)) walk(body);
 
     if (!hits.length) {
       console.log('[tts] コードブロックらしき要素は見つからなかった'
@@ -2121,9 +2138,9 @@
 
   function findInlineElements(row) {
     const scope = site.sel.prose
-      ? [...row.querySelectorAll(site.sel.body)]
+      ? bodyNodes(row)
           .flatMap((b) => [...b.querySelectorAll(site.sel.prose)])
-      : [...row.querySelectorAll(site.sel.body)];
+      : bodyNodes(row);
     if (!scope.length) return '';
 
     const seen = new Map();   // 署名 -> { count, sample }

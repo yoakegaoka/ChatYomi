@@ -86,13 +86,15 @@ const src = [
   'const BLOCK_TAGS = new Set(["P","DIV","LI","H1","H2","H3","H4","H5","H6","BLOCKQUOTE","TR","SECTION","ARTICLE"]);',
   'const DROP_TAGS = new Set(["SCRIPT","STYLE","BUTTON","SVG","NOSCRIPT"]);',
   extractFn('nodeToText'),
+  extractFn('bodyNodes'),
+  extractFn('hasBody'),
   extractFn('extractText'),
   extractFn('normalize'),
   extractFn('splitSentences'),
-  'return { nodeToText, extractText, normalize, splitSentences };',
+  'return { nodeToText, bodyNodes, hasBody, extractText, normalize, splitSentences };',
 ].join('\n');
 
-const { nodeToText, extractText, normalize, splitSentences } =
+const { nodeToText, bodyNodes, hasBody, extractText, normalize, splitSentences } =
   new Function('Node', 'cfg', 'site', src)(Node, cfg, site);
 
 // --- テスト -------------------------------------------------------------
@@ -304,8 +306,64 @@ console.log('extractText — 地の文だけを読む（ChatGPT の prose）');
         chatTurn.querySelectorAll(chatgptSel.userRow).length, 1);
   check('Chat モードでは回答だけを抽出する',
         normalize(extractText(chatTurn)), 'これは回答です。');
+  const signedInAnswer = el('div', [
+    el('div', [el('p', [text('ChatGPT: という表記を説明します。')])], 'MarkdownRoot-rZKhxa'),
+  ], '', { 'data-turn-key': 'turn-2' });
+  check('ログイン済み ChatGPT の本文先頭は変更しない',
+        normalize(extractText(signedInAnswer)), 'ChatGPT: という表記を説明します。');
 
-  site.sel.body = null; site.sel.prose = null;
+  // 未ログイン画面では、発言と回答が data-message-role 付きの li になる。
+  // 回答の行自身が本文要素なので、子要素だけを探すと無音になる。
+  const guestUser = el('li', [el('p', [text('これは利用者の発言です。')])],
+                       '', { 'data-message-role': 'user' });
+  const guestAnswer = el('li', [
+    el('span', [text('ChatGPT said:')], 'sr-only'),
+    el('div', [el('p', [text('これは未ログインの回答です。')])]),
+  ], '', { 'data-message-role': 'assistant' });
+  const guestList = el('ul', [guestUser, guestAnswer]);
+  site.sel.drop = chatgptSel.drop;
+  check('未ログインの回答行を見つける',
+        guestList.querySelectorAll(chatgptSel.row).length, 1);
+  check('未ログインの発言行を見つける',
+        guestList.querySelectorAll(chatgptSel.userRow).length, 1);
+  check('未ログインの行自身を本文とみなす', hasBody(guestAnswer), true);
+  check('未ログインでは回答だけを抽出する',
+        normalize(extractText(guestAnswer)), 'これは未ログインの回答です。');
+  const guestAnswerWithLabel = el('li', [
+    el('span', [text('ChatGPT said:')]),
+    el('div', [el('p', [text('ChatGPTの回答を読み上げます。')])]),
+  ], '', { 'data-message-role': 'assistant' });
+  check('未ログインの発言者ラベルだけを除く',
+        normalize(extractText(guestAnswerWithLabel)), 'ChatGPTの回答を読み上げます。');
+  const guestAnswerWithActualLabel = el('li', [
+    el('div', [text('ChatGPT:')]),
+    el('div', [el('p', [text('実機のラベルの後の回答です。')])]),
+  ], '', { 'data-message-role': 'assistant' });
+  check('未ログイン実機の ChatGPT: を除く',
+        normalize(extractText(guestAnswerWithActualLabel)), '実機のラベルの後の回答です。');
+  const guestAnswerWithBodyMention = el('li', [
+    el('div', [text('ChatGPT:')]),
+    el('div', [el('p', [text('本文中の ChatGPT: はそのまま残します。')])]),
+  ], '', { 'data-message-role': 'assistant' });
+  check('未ログインの本文中にある ChatGPT: は残す',
+        normalize(extractText(guestAnswerWithBodyMention)),
+        '本文中の ChatGPT: はそのまま残します。');
+  const guestAnswerWithBlockLabel = el('li', [
+    el('div', [text('ChatGPT')]),
+    el('div', [text('said:')]),
+    el('div', [el('p', [text('改行されたラベルの後の回答です。')])]),
+  ], '', { 'data-message-role': 'assistant' });
+  check('未ログインで発言者ラベルに改行があっても除く',
+        normalize(extractText(guestAnswerWithBlockLabel)), '改行されたラベルの後の回答です。');
+  const guestAnswerWithName = el('li', [
+    el('div', [text('ChatGPT')]),
+    el('div', [el('p', [text('名前だけのラベルの後の回答です。')])]),
+  ], '', { 'data-message-role': 'assistant' });
+  check('未ログインで発言者名だけのラベルも除く',
+        normalize(extractText(guestAnswerWithName)), '名前だけのラベルの後の回答です。');
+  check('未ログインの発言は抽出しない', extractText(guestUser), '');
+
+  site.sel.body = null; site.sel.prose = null; site.sel.drop = null;
 }
 
 console.log('splitSentences — 実応答に近い一連の流れ');
