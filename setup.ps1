@@ -16,7 +16,8 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
-$recommendedCheckpoint = 'Aratako/Irodori-TTS-500M-v3'
+. (Join-Path $PSScriptRoot 'tools\model_settings.ps1')
+$recommendedCheckpoint = Get-SelectedIrodoriCheckpoint -Settings (Read-LocalSettings)
 $problems = New-Object System.Collections.Generic.List[string]
 $notices = New-Object System.Collections.Generic.List[string]
 
@@ -35,30 +36,10 @@ function Get-SavedIrodoriServerDirectory {
     }
 }
 
-function Write-LocalSettings {
-    param([hashtable]$Data)
-    if (-not (Test-Path -LiteralPath $localDir -PathType Container)) {
-        New-Item -ItemType Directory -Path $localDir | Out-Null
-    }
-    $json = $Data | ConvertTo-Json
-    [IO.File]::WriteAllText($localSettingsPath, $json + [Environment]::NewLine,
-        (New-Object Text.UTF8Encoding($false)))
-}
-
 function Save-IrodoriServerDirectory {
     param([string]$Path)
-    $data = @{ irodoriServerDir = $Path }
-    if (Test-Path -LiteralPath $localSettingsPath -PathType Leaf) {
-        try {
-            $old = Get-Content -LiteralPath $localSettingsPath -Raw -Encoding utf8 | ConvertFrom-Json
-            if ([string]$old.irodoriServerDir -eq $Path) {
-                foreach ($property in $old.PSObject.Properties) {
-                    if ($property.Name -ne 'irodoriServerDir') { $data[$property.Name] = $property.Value }
-                }
-            }
-        }
-        catch { }
-    }
+    $data = Read-LocalSettings
+    $data.irodoriServerDir = $Path
     Write-LocalSettings -Data $data
 }
 
@@ -220,16 +201,16 @@ else {
         Write-Check 'Irodori-TTS-Server 用 uv' ([bool]$uv) $uvDetail
         if (-not $uv) { $problems.Add('uv が見つからない') }
 
-        Write-Check 'Irodori-TTS-Server 設定' $true '上流の .env は変更しない。通常の起動ではv3 / bf16を指定する。'
+        Write-Check 'Irodori-TTS-Server 設定' $true "上流の .env は変更しない。通常の起動では $recommendedCheckpoint / bf16 を指定する。"
     }
 
     try {
         $serverHealth = Invoke-RestMethod -Uri 'http://127.0.0.1:8088/health' -TimeoutSec 2
         $actual = $serverHealth.model.hf_checkpoint
-        $isV3 = $actual -eq $recommendedCheckpoint
-        if ($isV3) { Write-Check '起動中のIrodori-TTS-Server' $true "checkpoint: $actual" }
+        $isSelected = $actual -eq $recommendedCheckpoint
+        if ($isSelected) { Write-Check '起動中のIrodori-TTS-Server' $true "checkpoint: $actual" }
         else { Write-Host "[情報] 起動中のServerは $actual。ChatYomiからの起動前に停止する。" -ForegroundColor Yellow }
-        if (-not $isV3) { $notices.Add('起動中のServerはv3ではない。通常のstart.cmdで起動するには、そのServerを停止する。') }
+        if (-not $isSelected) { $notices.Add('起動中のServerは保存したモデルと異なる。通常のstart.cmdで起動するには、そのServerを停止する。') }
     }
     catch { Write-Host '[情報] Irodori-TTS-Server はまだ起動していない。起動時に確認する。' -ForegroundColor DarkGray }
 }

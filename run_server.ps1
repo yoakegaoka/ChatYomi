@@ -8,21 +8,17 @@
 param(
     [switch]$Dummy,
     [string]$IrodoriServerDir = '',
-    [ValidateNotNullOrEmpty()][string]$IrodoriCheckpoint = 'Aratako/Irodori-TTS-500M-v3',
+    [ValidateNotNullOrEmpty()][string]$IrodoriCheckpoint = '',
+    [switch]$SaveCheckpointOnReady,
     [int]$Port = 0
 )
 
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
-
-function Get-SavedIrodoriServerDirectory {
-    $settingsPath = Join-Path $PSScriptRoot '.local\settings.json'
-    if (-not (Test-Path -LiteralPath $settingsPath -PathType Leaf)) { return '' }
-    try {
-        $settings = Get-Content -LiteralPath $settingsPath -Raw -Encoding utf8 | ConvertFrom-Json
-        return [string]$settings.irodoriServerDir
-    }
-    catch { throw '.local/settings.json を読み取れない。setup.cmd をもう一度実行すること。' }
+. (Join-Path $PSScriptRoot 'tools\model_settings.ps1')
+$localSettings = Read-LocalSettings
+if (-not $PSBoundParameters.ContainsKey('IrodoriCheckpoint')) {
+    $IrodoriCheckpoint = Get-SelectedIrodoriCheckpoint -Settings $localSettings
 }
 
 function Get-LogTail {
@@ -47,7 +43,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'config.yaml') -PathTy
 }
 
 if (-not $Dummy) {
-    $irodoriServerDir = if ($IrodoriServerDir) { $IrodoriServerDir } else { Get-SavedIrodoriServerDirectory }
+    $irodoriServerDir = if ($IrodoriServerDir) { $IrodoriServerDir } else { [string]$localSettings.irodoriServerDir }
     if (-not $irodoriServerDir) { throw 'Irodori-TTS-Server の場所が未設定。.\setup.ps1 -IrodoriServerDir <場所> を実行すること。' }
     if (-not (Test-Path -LiteralPath $irodoriServerDir -PathType Container)) { throw "Irodori-TTS-Server の場所が見つからない: $irodoriServerDir" }
     $uv = Get-Command 'uv' -ErrorAction SilentlyContinue
@@ -96,6 +92,13 @@ if (-not $Dummy) {
     Write-Host "  checkpoint: $checkpoint"
     if ($checkpoint -ne $IrodoriCheckpoint) {
         throw "起動中のIrodori-TTS-Serverは $checkpoint を使用中。指定した $IrodoriCheckpoint へ稼働中に切り替えることはできない。Serverを停止してから起動し直すこと。"
+    }
+    if ($SaveCheckpointOnReady -and -not $serverInfo.runtime.loaded) {
+        throw 'モデルが読み込まれていないため、選択は保存していません。Serverのログを確認してください。'
+    }
+    if ($SaveCheckpointOnReady) {
+        Save-SelectedIrodoriCheckpoint -Checkpoint $IrodoriCheckpoint
+        Write-Host "次回から使うモデルとして保存: $IrodoriCheckpoint" -ForegroundColor Green
     }
     if ($launchedServer) {
         $listener = Get-NetTCPConnection -LocalPort 8088 -State Listen -ErrorAction Stop | Select-Object -First 1

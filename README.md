@@ -15,7 +15,7 @@ Windows 11、Python 3.11以上、Irodori-TTSを動かせるNVIDIA GPUが必要�
 3. 管理画面で標準の声を試し、必要なら声を登録します。ブラウザへユーザースクリプトを追加します。
 4. AIチャットの画面に表示される丸いボタンを一度押して有効にします。
 
-毎回の起動は `start.cmd`、停止は `stop.cmd` で行えます。通常はIrodori-TTS v3を使用します。[モデルの切り替え方とv3を選んだ理由](docs/windows-onboarding.md#モデルを切り替える)も参照できます。各画面の操作とブラウザへの追加方法は[Windowsで使い始める](docs/windows-onboarding.md)を参照してください。
+毎回の起動は `start.cmd`、停止は `stop.cmd` で行えます。初期状態ではIrodori-TTS v3を使用します。モデルを変えるときは `select_model.cmd` を実行します。Irodori-TTS-Serverが対応するHugging FaceのチェックポイントIDを自由に入力でき、選んだモデルは次回以降の `start.cmd` でも使われます。[Irodori-TTS-v4-LargeのINT8量子化版](https://huggingface.co/Aratako/Irodori-TTS-v4-Large-Quantized)も選択でき、開発者の環境では動作と発声を確認済みです。[モデルの切り替え方](docs/windows-onboarding.md#モデルを切り替える)と[Windowsで使い始める](docs/windows-onboarding.md)を参照してください。
 
 ## Androidでも使う
 
@@ -56,4 +56,4 @@ ChatYomiはClaude、Copilot Chat、Gemini、ChatGPT、Irodori-TTSの各提供者
 
 ## ライセンス
 
-このリポジトリのコードと文書は[MIT License](LICENSE)で公開します。Irodori-TTS-Server本体・モデル・参照音声は含まれません。
+このリポジトリのコードと文書は[MIT License](LICENSE)で公開します。Irodori-TTS-Server本体・モデル・参照音声は含まれません。初期状態で使う[Irodori-TTS v3](https://huggingface.co/Aratako/Irodori-TTS-500M-v3)はMITライセンスですが、選択できる[v4-Large量子化版](https://huggingface.co/Aratako/Irodori-TTS-v4-Large-Quantized)にはGemmaの利用条件とモデル公開元の追加制限が適用されます。任意のモデルを選ぶ場合も、使う前に公開元の条件を確認してください。

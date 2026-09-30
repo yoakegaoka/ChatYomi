@@ -17,7 +17,7 @@
 ## プロジェクトフォルダーと一緒に削除されるもの
 
 - `.venv/`: 本ソフト専用のPython環境
-- `.local/settings.json`: Irodori-TTS-Serverの設置場所
+- `.local/settings.json`: Irodori-TTS-Serverの設置場所、選んだモデルと最近使ったモデル
 - `config.yaml`: 管理画面やサーバーの設定
 - `voices/`内の利用者音声と音声設定
 - `readings.local*.yaml`、`readings.unknown.yaml`: 利用者の読み辞書と収集結果

@@ -14,7 +14,9 @@ Irodori-TTS-Serverの公式READMEに従ってuvをインストールします。
 
 ## 起動中のServerが指定したモデルと異なる
 
-既に起動しているServerのモデルはAPIから変更できません。`stop.cmd` で停止し、[使いたいモデルを指定して起動](windows-onboarding.md#モデルを切り替える)してください。通常の `start.cmd` はv3を指定します。Server側の `.env` は変更しません。
+既に起動しているServerのモデルはAPIから変更できません。[`select_model.cmd` で使いたいモデルを選ぶ](windows-onboarding.md#モデルを切り替える)と、ChatYomiが起動したServerなら停止して切り替えます。外部から起動したServerは自動停止しないため、先にそのServerを停止してください。`start.cmd` は保存したモデルを使い、未選択ならv3を使います。Server側の `.env` は変更しません。
+
+モデルの読み込みに失敗した場合、以前に保存したモデルの選択は残ります。エラー内容を確認し、読み込み途中のServerが残っていれば `stop.cmd` で停止してから、`select_model.cmd` で別のモデルを選ぶか、`start.cmd` で以前のモデルを起動してください。モデルIDは公開元に記載されたHugging FaceのリポジトリIDまたはそのサブフォルダーを指定します。
 
 ## 起動が180秒以内に終わらない
 
